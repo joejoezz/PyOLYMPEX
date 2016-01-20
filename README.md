@@ -25,20 +25,20 @@ Process and plot rain gauge data (both Iowa and standalone gauges)
 
 Instructions for use:
 
-#import methods
-import RawParsivel as rp
-import ProcessParsivel as pp
+import methods
+<import RawParsivel as rp>
+<import ProcessParsivel as pp>
 
-#First, download raw Parsivel data at: ftp://trmm-fc.gsfc.nasa.gov/distro/apu/
-infile = '/dir/apu01_2015110100.dat'
+Download raw Parsivel data at: ftp://trmm-fc.gsfc.nasa.gov/distro/apu/
+<infile = '/dir/apu01_2015110100.dat'>
 
-#Create Raw Parsivel instance (by reading data):
-rpdata = rp.read_parsivel(infile)
+Create Raw Parsivel instance (by reading data):
+<rpdata = rp.read_parsivel(infile)>
 
-#Create Processed Parsivel instance
-ppdata = pp.process_parsivel(rpdata,time_interval=2)
+Create Processed Parsivel instance
+<ppdata = pp.process_parsivel(rpdata,time_interval=2)>
 
-#Make a test plot of diameter vs. fall speed
-ppdata.plot_diam_fspd()
+Make a test plot of diameter vs. fall speed
+<ppdata.plot_diam_fspd()>
 
 
