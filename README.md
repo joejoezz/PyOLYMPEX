@@ -3,7 +3,7 @@
 ####Required modules:
 numpy, scipy
 
-Current features: 
+####Current features: 
 - Processes Raw Parsivel APU (.dat) files from the OLYMPEX field campaign. 
 - Allows user to specify averating time (usually 1 min but can be any multiple of 10 seconds)
 - Different filtering for rain vs. snow
@@ -15,7 +15,7 @@ Current features:
 - Write data to text files
 - Plot timeseries, drop size distributions, and fall velocities
 
-####Other planned additions
+#####Other planned additions
 - 2DVD Processing (to compare with Parsivel)
 - Integrate PyART to plot NPOL, DOW, and EC X-band radars
 - Plot GPM overpasses
@@ -25,22 +25,22 @@ Current features:
 
 ####Instructions for use:
 
-import methods
+######import methods
 ```
 import RawParsivel as rp
 import ProcessParsivel as pp
 ```
 
-Download raw Parsivel data at: ftp://trmm-fc.gsfc.nasa.gov/distro/apu/
-`infile = '/dir/apu01_2015110100.dat'`
+######Download raw Parsivel data at: ftp://trmm-fc.gsfc.nasa.gov/distro/apu/
+```infile = '/dir/apu01_2015110100.dat'```
 
-Create Raw Parsivel instance (by reading data):
-`rpdata = rp.read_parsivel(infile)`
+######Create Raw Parsivel instance (by reading data):
+```rpdata = rp.read_parsivel(infile)```
 
-Create Processed Parsivel instance
-`ppdata = pp.process_parsivel(rpdata,time_interval=2)`
+######Create Processed Parsivel instance (with 2-minute averaging time)
+```ppdata = pp.process_parsivel(rpdata,time_interval=2)```
 
 Make a test plot of diameter vs. fall speed
-`ppdata.plot_diam_fspd()`
+```ppdata.plot_diam_fspd()```
 
 

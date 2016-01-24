@@ -3,7 +3,7 @@ import pdb
 import datetime
 import scipy.stats.mstats
 
-def process_parsivel(raw_parsivel_object,time_interval=2,remove_bins=None):
+def process_parsivel(raw_parsivel_object,time_interval=1,remove_bins=None):
 
     processed_object = ProcessParsivel(raw_parsivel_object)
 
@@ -13,10 +13,7 @@ def process_parsivel(raw_parsivel_object,time_interval=2,remove_bins=None):
 
     processed_object.time_averaging(time_interval=time_interval)
 
-    pdb.set_trace()
-
-    return processed_parsivel
-
+    return processed_object
 
 class ProcessParsivel(object):
 
@@ -38,12 +35,13 @@ class ProcessParsivel(object):
 
     def __init__(self,raw_parsivel):
         self.raw_parsivel = raw_parsivel #raw parsivel object (input)
-        self.processed_matrix = []
+        self.processed_matrix = np.zeros(np.shape(self.raw_parsivel.matrix)) #raw matrix with conditional matrix applied
         self.time = []
         self.error_code = []
         self.temperature = []
         self.wxcode = []
-        self.matrix = []
+        self.matrix = [] #time-averaged matrix
+        self.time_interval = 0.0 #time in minutes that we are averaging by (specified by user)
         
         self.ndrops_10s = [] # processed numbers of drops (10s)
 
@@ -71,7 +69,7 @@ class ProcessParsivel(object):
 
             # apply conditional matrix to filter out questionable drops
             # rain if wxcode < 66, frozen if wxcode > 65
-            if wx < 66:
+            if wx < 66:  #66
                 matrix_tmp = np.array(self.liquid_matrix)
             else:
                 matrix_tmp = np.array(self.frozen_matrix)
@@ -86,11 +84,12 @@ class ProcessParsivel(object):
                     print('remove_bins must be a 2-element list')
         
             #apply conditional matrix with remove_bins
-            matrix_tmp = self.raw_parsivel.matrix[i,:] * matrix_tmp
-            if len(self.processed_matrix) == 0:
-                self.processed_matrix.append(matrix_tmp)
-            else:
-                self.processed_matrix = np.vstack((self.processed_matrix,matrix_tmp))
+            matrix_corrected = self.raw_parsivel.matrix[i,:] * matrix_tmp
+            self.processed_matrix[i,:] = matrix_corrected
+            #if len(self.processed_matrix) == 0:
+            #    self.processed_matrix.append(matrix_corrected)
+            #else:
+            #    self.processed_matrix = np.vstack((self.processed_matrix,matrix_corrected))
             self.ndrops_10s.append((np.sum(self.raw_parsivel.matrix[i,:])))
    
     def time_averaging(self, time_interval=1, remove_missing=True):
@@ -112,10 +111,10 @@ class ProcessParsivel(object):
         '''
 
         pt = self.raw_parsivel.pytime
+        self.time_interval = time_interval
         if time_interval >= 1: #averaging to minutes
             for k,t in enumerate(pt):
                 #seconds always 0, for minute, subtract off modulus of time interval
-                #pdb.set_trace()
                 pt[k] = t.replace(second=0)
                 min_diff = datetime.timedelta(minutes=t.minute % time_interval)
                 pt[k] -= min_diff
@@ -131,7 +130,7 @@ class ProcessParsivel(object):
         while nowtime <= pt[-1]:
             ind = np.where((pt == nowtime))[0]
             matrix_temp = np.zeros((1024)) 
-            if len(ind) == time_interval*6: #need exact # of 10s data, otherwise assumptions will be wront
+            if len(ind) == time_interval*6: #need exact # of 10s data, otherwise assumptions will be wrong
                 self.time.append(nowtime)
                 #error code is the maximum value in each data chunk
                 self.error_code.append(max(self.raw_parsivel.error_code[ind]))
@@ -140,7 +139,8 @@ class ProcessParsivel(object):
                 wxcode_tmp = scipy.stats.mstats.mode(self.raw_parsivel.wxcode[ind])[0][0]
                 self.wxcode.append(wxcode_tmp)
                 for index in ind:
-                    matrix_temp += self.raw_parsivel.matrix[index,:]
+                    #matrix_temp += self.raw_parsivel.matrix[index,:]
+                    matrix_temp += self.processed_matrix[index,:]
             else: #if missing data
                 self.time.append(nowtime)
                 self.error_code.append(float('nan'))
@@ -247,6 +247,7 @@ class ProcessParsivel(object):
       15.559, 15.896]
 
     #matrices (to right = larger diameter, down = faster fall velocity)
+    zero_matrix = np.zeros(1024)
 
     liquid_matrix = [
         1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -281,6 +282,7 @@ class ProcessParsivel(object):
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
 
     #frozen matrix: velocity cutoff: 6 m/s, size cutoff 12 mm (Ali Tokay, personal communication)
     frozen_matrix = [
