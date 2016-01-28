@@ -2,14 +2,28 @@ import numpy as np
 import pdb
 import datetime
 import scipy.stats.mstats
+import RawParsivel as rp
+import ProcessParsivel as pp
+import glob
 
-def calculate_parsivel_dsd(processed_parsivel_object):
+def calc_dsd(apu,sitename,date,time_interval=1):
+    '''
+    Funtion that wraps all three Parsivel classes together to make the
+    final DSD object
 
-    dsd_object = ParsivelDSD(processed_parsivel_object)
+    Use to get the data to make plots
+    '''
 
-    dsd_object.get_precip_params()
 
-    return dsd_object
+    indir = '/home/disk/funnel/olympex/archive2/'+apu+'/Parsivel/'+date[0:6]+'/'
+    searchfor= indir+apu+'_'+date+'*'     
+    infiles = glob.glob(searchfor)
+
+    rpdata = rp.read_parsivel(infiles)
+    ppdata = pp.process_parsivel(rpdata,time_interval=time_interval)
+    dsd = ParsivelDSD(ppdata)
+    dsd.get_precip_params()
+    return dsd
 
 
 class ParsivelDSD(object):
@@ -43,8 +57,8 @@ class ParsivelDSD(object):
         #some data stored as tuples if applicable
         #first element = average or total across all 32 DSD bins
         #second element = value for each bin individually (plus time-dimension)
-
-        self.proc_p2 = processed_parsivel #raw parsivel object (input)
+        self.proc_p2 = processed_parsivel
+        self.time = self.proc_p2.time 
         timedim = len(self.proc_p2.matrix[:,0]) #time dimension
         #ndrops is the number of drops (non-normalzed) in each volume of air
         self.ndrops = (np.zeros(timedim),np.zeros((timedim,32)))
@@ -61,6 +75,7 @@ class ParsivelDSD(object):
         self.dm = np.zeros(timedim) #mass-weighted mean diameter
         self.sigma_m = np.zeros(timedim) #variance of mass spectrum
         self.moments = np.zeros((timedim,8)) #drop moments
+        #self.rainrate_old = (np.zeros(timedim),np.zeros((timedim,32))) #testing
     
 
     def get_precip_params(self):
@@ -73,9 +88,16 @@ class ParsivelDSD(object):
         # Note: if frozen precipitation detected, no rain rate or LWC is returned
         
         #add loop here to go through each time dimension
+        #timerain has to be calculated individually for each record in case data is missing 
+        #what usually happens is that maybe 1 min of data per day is missing in 10-30s intervals
         timerain = self.proc_p2.time_interval
+        nrecords_exp = timerain*6
+        nrecords_actual = np.array(self.proc_p2.num_records)
+        nrecords_missing = (nrecords_exp - nrecords_actual).astype(float) #missing records
         for td,dmax in enumerate(self.dmax):
-
+            #get correct time multiplier
+            time_mult = 60 * timerain - nrecords_missing[td]*10 #units: seconds
+            time_div = 60 / (timerain - (nrecords_missing[td]/6)) #units: s/min
             #reshape to 32x32
             matrix = np.reshape(self.proc_p2.matrix[td,:],(32,32))
             ndrops = np.sum(matrix) #total drop count for this time step **need to output this** as self.ndrops
@@ -91,26 +113,28 @@ class ParsivelDSD(object):
                     p2_area2 = 180.*(30.-(dbin/2.))/100. #not sure why we divide by 100
                     p2_area = 180.*(30.-(dbin/2.))
                     #denominators
-                    denom2 = 60*timerain * p2_area2 * vbin * self.drop_spread[dind] * 100 #per m^3*mmbin
-                    denom2_beard = 60*timerain * p2_area2 * self.v_theoretical[vind] * self.drop_spread[dind] * 100 
+                    denom2 = time_mult * p2_area2 * vbin * self.drop_spread[dind] * 100 #per m^3*mmbin
+                    denom2_beard = time_mult * p2_area2 * self.v_theoretical[vind] * self.drop_spread[dind] * 100 
                     self.dsd[td,dind] += (1.e6 * drops)/denom2 #10^6 converts to m^3*mm instead of mm^3*m
                     if self.proc_p2.wxcode[td] < 65: #use theoretical fall speed for rain
                         #units: s*mm^2*m/s*mm = mm^3*m
-                        denominator = 60*timerain * p2_area * vbin #per m^3 (not per bin)
+                        denominator = time_mult * p2_area * vbin #per m^3 (not per bin)
                     else: #no change for snow as of right now...could add in later
-                        denominator = 60*timerain * p2_area * vbin 
+                        denominator = time_mult * p2_area * vbin 
 
                     vol = np.pi*dbin**3/6 #volume of 1 drop in this size bin
                     if drops > 0: self.dmax[td] = dbin #make dmax for this bin nonzero if >0 drops
                     self.drop_conc[1][td,dind] += drops*1.e6/denominator #direct evaulation of Tokay eq 6 for drop conc
                     self.lwc[1][td,dind] += drops*vol*1.e3/denominator #units: g/m^3 per mm bin (rho=1000 g/m^3)
                     self.z[1][td,dind] += drops * 1.e6 * dbin**6/denominator #reflectivity factor (6th power of diameter, normalized for area, time)
-                    self.rainrate[1][td,dind] += drops * vol * timerain*60 / p2_area #rainrate
+                    self.rainrate[1][td,dind] += drops * vol / p2_area *time_div #rainrate
+                    #self.rainrate[1][td,dind] += drops * vol / p2_area * 60 / timerain #rainrate old
                     #4th and 3rd moments
-                    x4 += 1.e6 * drops * dbin**4 / denominator
-                    x3 += 1.e6 * drops * dbin**3 / denominator
-                    for ind,moment in enumerate(self.moments[td,:]):
-                        self.moments[td,ind] += 1.e6 * drops * dbin**ind / denominator
+                    if drops > 0:
+                        x4 += 1.e6 * drops * dbin**4 / denominator
+                        x3 += 1.e6 * drops * dbin**3 / denominator
+                        for ind,moment in enumerate(self.moments[td,:]):
+                            self.moments[td,ind] += 1.e6 * drops * dbin**ind / denominator
                     
             #compute total drop_conc, average lwc, etc (1st dimension of tuples)
             self.drop_conc[0][td] = np.sum(self.drop_conc[1][td,:]) #this is good

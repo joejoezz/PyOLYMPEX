@@ -7,11 +7,10 @@ numpy, scipy
 - Processes Raw Parsivel APU (.dat) files from the OLYMPEX field campaign. 
 - Allows user to specify averating time (usually 1 min but can be any multiple of 10 seconds)
 - Different filtering for rain vs. snow
-- Removal of any range of drop size bins
+- Easily allows for slicing data by drop size bin
 
 ####Future Features:
 #####Priority #1: Parsivel
-- ParsivelDSD class that uses Tokay et al. (2014) method to compute DSD, LWC, Z, etc. (under construction)
 - Write data to text files
 - Plot timeseries, drop size distributions, and fall velocities
 
@@ -27,20 +26,22 @@ numpy, scipy
 
 ######import methods
 ```
-import RawParsivel as rp
-import ProcessParsivel as pp
+import ParsivelDSD as pdsd
 ```
 
 ######Download raw Parsivel data at: ftp://trmm-fc.gsfc.nasa.gov/distro/apu/
-```infile = '/dir/apu01_2015110100.dat'```
 
-######Create Raw Parsivel instance (by reading data):
-```rpdata = rp.read_parsivel(infile)```
+######Specify directory and site name
+```
+apu = 'apu06'
+sitename = 'Prairie Creek'
+date = '20160127'
+time_interval = 30' 
+indir = [user should specify indir]
+```
 
-######Create Processed Parsivel instance (with 2-minute averaging time)
-```ppdata = pp.process_parsivel(rpdata,time_interval=2)```
+######Compute DSD and derived parameters
+```dsd = pdsd.calc_dsd(indir,apu,sitename,date,time_interval=time_interval)```
 
-Make a test plot of diameter vs. fall speed
-```ppdata.plot_diam_fspd()```
 
 
