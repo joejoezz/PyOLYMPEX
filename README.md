@@ -4,10 +4,14 @@
 numpy, scipy
 
 ####Current features: 
+#####Parsivel
 - Processes Raw Parsivel APU (.dat) files from the OLYMPEX field campaign. 
 - Allows user to specify averating time (usually 1 min but can be any multiple of 10 seconds)
 - Different filtering for rain vs. snow
 - Easily allows for slicing data by drop size bin
+#####Iowa Rain Gauges
+- Processes Iowa Gauge packets from the Iowa Gauge server
+- Writes daily text and metadata files
 
 ####Future Features:
 #####Priority #1: Parsivel
@@ -20,9 +24,11 @@ numpy, scipy
 - Plot GPM overpasses
 - Plot MRR
 - Plot PIP disdrometer data
-- Process and plot rain gauge data (both Iowa and standalone gauges)
+- Plot rain gauge data
 
-####Instructions for use:
+####Instructions:
+
+#####Parsivel:
 
 ######import methods
 ```
@@ -42,6 +48,25 @@ indir = [user should specify indir]
 
 ######Compute DSD and derived parameters
 ```dsd = pdsd.calc_dsd(indir,apu,sitename,date,time_interval=time_interval)```
+
+#####Iowa Gauges:
+
+######import methods
+```
+import IowaGaugeRaw as igr
+```
+######Specify list of gauge numbers, date, and directories to save in
+```
+gaugelist = ['NASA0043','NASA0028']
+yyyymmdd = '20151101'
+yyyymmdd2 = '20151102' #specify following date unless using for real-time
+outdir = 'directory for gauge files'
+outdir_meta = 'directory for metadata files'
+for gauge in gaugelist:
+    igr.save_iowa_gauge(yyyymmdd,gauge,outdir,outdir_meta,nextdate=yyyymmdd2)
+```
+
+
 
 
 
