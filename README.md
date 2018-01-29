@@ -25,7 +25,7 @@ import ParsivelDSD as pdsd
 ```
 
 Download raw Parsivel data at: ftp://trmm-fc.gsfc.nasa.gov/distro/apu/
-Specify site
+
 ```
 apu = 'apu06'
 sitename = 'Prairie Creek'
